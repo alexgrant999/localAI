@@ -1,7 +1,3 @@
-
-
-
-
 import React, { useState } from 'react';
 import { Zap, Save, Loader2, Link, Copy, Check, AlertTriangle, Globe, Key, Brain, Sparkles, MessageCircle, Facebook, Instagram, HelpCircle, ChevronDown, ChevronUp, Smartphone, Mic } from 'lucide-react';
 import { IntegrationSettings, User, AiSettings } from '../../types';
@@ -193,8 +189,8 @@ const SettingsView: React.FC<SettingsViewProps> = ({
               <ol className="list-decimal list-inside text-xs text-blue-800 space-y-1.5 ml-1">
                 <li>Go to <a href="https://developers.facebook.com/apps" target="_blank" className="underline font-bold">Meta Developers</a> and create an App (Type: Business).</li>
                 <li>Add products: <strong>Messenger</strong> (for FB/Insta) or <strong>WhatsApp</strong>.</li>
-                <li>In <strong>WhatsApp > API Setup</strong>, copy the "Phone Number ID" and "Temporary Access Token".</li>
-                <li>In <strong>Messenger > Settings</strong>, generate a token for your Page. Copy the "Page ID".</li>
+                <li>In <strong>WhatsApp &gt; API Setup</strong>, copy the "Phone Number ID" and "Temporary Access Token".</li>
+                <li>In <strong>Messenger &gt; Settings</strong>, generate a token for your Page. Copy the "Page ID".</li>
                 <li>Go to <strong>Webhooks</strong> configuration in Meta.</li>
                 <li>Click <strong>Edit Callback URL</strong>. Paste the Webhook URL below.</li>
                 <li>Verify Token: Enter <code>localai</code>.</li>
