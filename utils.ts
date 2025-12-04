@@ -24,7 +24,7 @@ export const getErrorMessage = (error: any): string => {
      if (error.details) return error.details;
      
      try {
-       const json = JSON.stringify(error);
+       const json = JSON.stringify(error, null, 2);
        if (json === '{}') return 'Unknown Object Error (Check Console)';
        return json;
      } catch (e) {
