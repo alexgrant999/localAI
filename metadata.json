@@ -1,0 +1,5 @@
+{
+  "name": "LocalAI Receptionist",
+  "description": "An AI receptionist for local businesses that answers every message, books clients, manages cancellations, and handles customer questions — 24/7.",
+  "requestFramePermissions": []
+}
