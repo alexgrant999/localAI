@@ -82,14 +82,14 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, user }) => {
         const checkMessage = async () => {
              const { data: msg } = await supabase
                  .from('messages')
-                 .select('sender, conversation_id')
+                 .select('sender, conversation_id, text')
                  .eq('id', newIncomingMessageId)
                  .single();
              
              if (msg && msg.sender === 'user') {
                  addToast('info', 'New message received');
                  if (integration.autoPilotEnabled) {
-                     addToast('info', 'Server Auto-Pilot is responding in background...');
+                     addToast('info', 'Auto-Pilot: Analyzing...');
                  }
              }
         };
@@ -199,30 +199,28 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, user }) => {
   };
 
   const handleAiAutoReply = async (targetConversationId?: string) => {
+    // Determine ID to use (background vs foreground)
     const id = targetConversationId || selectedConversationId;
     if (!id) return;
     
     setIsAiProcessing(true);
     if (!targetConversationId) addToast('info', 'Generating AI Reply...');
+    else addToast('info', `Auto-Pilot: Replying in 2s...`);
 
     try {
-      // Resolve Context (Phone & Channel)
-      let targetPhone = '';
-      let targetChannel = 'sms';
+      // FORCE FRESH DATA FETCH:
+      // We must fetch the conversation from DB to ensure we have the correct Channel and Phone
+      // Stale state (selectedConversation) might be wrong if this is a background event
+      const { data: convData, error: convError } = await supabase
+          .from('conversations')
+          .select('id, phone, channel')
+          .eq('id', id)
+          .single();
+      
+      if (convError || !convData) throw new Error("Could not load conversation details");
 
-      const loadedConv = conversations.find(c => c.id === id);
-      if (loadedConv) {
-        targetPhone = loadedConv.phone;
-        targetChannel = loadedConv.channel;
-      } else {
-        const { data } = await supabase.from('conversations').select('*').eq('id', id).single();
-        if (data) {
-          targetPhone = data.phone;
-          targetChannel = data.channel;
-        }
-      }
-
-      if (!targetPhone) throw new Error("Could not find conversation details");
+      const targetPhone = convData.phone;
+      const targetChannel = convData.channel;
 
       const { data, error } = await supabase.functions.invoke('generate-reply', {
         body: { conversation_id: id }
@@ -235,10 +233,13 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, user }) => {
 
       await supabase.from('messages').insert({ conversation_id: id, sender: 'ai', text: responseText });
       await supabase.from('conversations').update({ last_message: responseText, last_message_at: new Date().toISOString(), status: 'replied' }).eq('id', id);
+      
+      // Use the fresh channel info
       await callSendMessage(targetPhone, responseText, targetChannel);
       
       if (id === selectedConversationId) fetchMessagesById(id);
       if (!targetConversationId) addToast('success', 'AI Reply Sent');
+      else addToast('success', `Auto-replied via ${targetChannel}`);
 
     } catch (e: any) {
       const errMsg = getErrorMessage(e);
@@ -306,6 +307,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, user }) => {
         auth_token: integration.authToken,
         phone_number: cleanPhone,
         meta_page_id: integration.metaPageId,
+        meta_instagram_id: integration.metaInstagramId, // New field
         meta_access_token: integration.metaAccessToken,
         whatsapp_phone_id: integration.whatsappPhoneId,
         website_url: aiSettings.websiteUrl,
@@ -330,6 +332,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, user }) => {
         ...prev, 
         id: data.id, 
         phoneNumber: cleanPhone,
+        metaInstagramId: data.meta_instagram_id,
         autoPilotEnabled: data.auto_pilot_enabled ?? false
       }));
       addToast('success', 'Settings saved!');
@@ -439,6 +442,9 @@ begin
   -- Meta columns
   if not exists (select 1 from information_schema.columns where table_name = 'integrations' and column_name = 'meta_page_id') then
     alter table public.integrations add column meta_page_id text;
+  end if;
+  if not exists (select 1 from information_schema.columns where table_name = 'integrations' and column_name = 'meta_instagram_id') then
+    alter table public.integrations add column meta_instagram_id text;
   end if;
   if not exists (select 1 from information_schema.columns where table_name = 'integrations' and column_name = 'meta_access_token') then
     alter table public.integrations add column meta_access_token text;

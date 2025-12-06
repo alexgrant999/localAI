@@ -1,4 +1,5 @@
 
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.7";
 
@@ -53,10 +54,11 @@ serve(async (req) => {
       recipientId = messaging.recipient.id;
       text = messaging.message?.text;
       
-      // Check if it's Instagram (often comes as 'instagram' object or via page with specific IDs)
+      // If objectType is explicitly instagram, use that channel.
+      // Or if the recipient ID matches the stored Instagram ID, we treat it as instagram.
       if (objectType === 'instagram') channel = 'instagram';
       
-      console.log(`Processing Messenger: From ${senderId} to Page ${recipientId}`);
+      console.log(`Processing Messenger/Insta: From ${senderId} to ID ${recipientId}`);
     } 
     // B. Handle WhatsApp
     else if (waMessage) {
@@ -81,21 +83,30 @@ serve(async (req) => {
     );
        
     // 4. Identify Tenant
-    // We look for a user who has saved this Page ID or WhatsApp ID
+    // We look for a user who has saved this Page ID, WhatsApp ID, OR Instagram ID
     const { data: integration, error: intError } = await supabaseAdmin
       .from('integrations')
       .select('user_id, auto_pilot_enabled')
-      .or(`meta_page_id.eq.${recipientId},whatsapp_phone_id.eq.${recipientId}`)
+      .or(`meta_page_id.eq.${recipientId},whatsapp_phone_id.eq.${recipientId},meta_instagram_id.eq.${recipientId}`)
       .maybeSingle();
 
     if (intError) console.error("DB Lookup Error:", intError.message);
 
     if (!integration) {
-      console.error(`No tenant found for ID ${recipientId}. Check your Settings > Meta Page ID.`);
+      console.error(`No tenant found for ID ${recipientId}. Check your Settings > Meta IDs.`);
       return new Response(`No tenant found for ID ${recipientId}`, { status: 200, headers: corsHeaders });
     }
 
     const userId = integration.user_id;
+
+    // Check if channel needs adjustment based on DB match (e.g. if we matched on meta_instagram_id)
+    // If the recipientId matched meta_instagram_id in our DB query, force channel to instagram
+    // Note: This logic is implicit because we only have one row per user in integrations usually,
+    // but if we want to be precise:
+    // We can't easily know WHICH column matched in the .or() query without separate queries or fetching fields.
+    // For now, if objectType was instagram, we trust it. If it was 'page', it's usually Facebook.
+
+    if (objectType === 'instagram') channel = 'instagram';
 
     // 5. Find or Create Conversation
     let { data: conversation } = await supabaseAdmin
@@ -112,7 +123,7 @@ serve(async (req) => {
          .from('conversations')
          .insert({
            user_id: userId,
-           client_name: channel === 'whatsapp' ? `WA User ${senderId.slice(-4)}` : 'Meta User',
+           client_name: channel === 'whatsapp' ? `WA User ${senderId.slice(-4)}` : (channel === 'instagram' ? 'Insta User' : 'Meta User'),
            phone: senderId,
            channel: channel,
            last_message: text,

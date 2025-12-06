@@ -4,6 +4,7 @@
 
 
 
+
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { supabase } from '../supabaseClient';
 import { Conversation, Message, Campaign, IntegrationSettings, AiSettings, User } from '../types';
@@ -29,6 +30,7 @@ export const useDashboardData = (user: User) => {
     authToken: '',
     phoneNumber: '',
     metaPageId: '',
+    metaInstagramId: '',
     metaAccessToken: '',
     whatsappPhoneId: '',
     notificationPhone: '',
@@ -76,7 +78,7 @@ export const useDashboardData = (user: User) => {
           status: c.status,
           audience: c.audience,
           sentAt: c.sent_at ? new Date(c.sent_at).toLocaleDateString() : 'Scheduled',
-          stats: { delivered: c.stats_delivered, replied: c.stats_replied }
+          stats: c.stats_delivered ? { delivered: c.stats_delivered, replied: c.stats_replied } : { delivered: 0, replied: 0 }
         })));
       }
 
@@ -96,6 +98,7 @@ export const useDashboardData = (user: User) => {
           authToken: ints.auth_token || '',
           phoneNumber: ints.phone_number || '',
           metaPageId: ints.meta_page_id || '',
+          metaInstagramId: ints.meta_instagram_id || '',
           metaAccessToken: ints.meta_access_token || '',
           whatsappPhoneId: ints.whatsapp_phone_id || '',
           notificationPhone: ints.notification_phone || '',

@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Zap, Save, Loader2, Link, Copy, Check, AlertTriangle, Globe, Key, Brain, Sparkles, MessageCircle, Facebook, Instagram, HelpCircle, ChevronDown, ChevronUp, Smartphone, Mic } from 'lucide-react';
 import { IntegrationSettings, User, AiSettings } from '../../types';
@@ -186,29 +187,58 @@ const SettingsView: React.FC<SettingsViewProps> = ({
           {showMetaGuide && (
             <div className="bg-blue-50 p-6 border-b border-blue-100">
               <h4 className="font-bold text-blue-900 text-sm mb-2 flex items-center gap-2"><HelpCircle size={14}/> Setup Guide</h4>
-              <ol className="list-decimal list-inside text-xs text-blue-800 space-y-1.5 ml-1">
-                <li>Go to <a href="https://developers.facebook.com/apps" target="_blank" className="underline font-bold">Meta Developers</a> and create an App (Type: Business).</li>
-                <li>Add products: <strong>Messenger</strong> (for FB/Insta) or <strong>WhatsApp</strong>.</li>
-                <li>In <strong>WhatsApp &gt; API Setup</strong>, copy the "Phone Number ID" and "Temporary Access Token".</li>
-                <li>In <strong>Messenger &gt; Settings</strong>, generate a token for your Page. Copy the "Page ID".</li>
-                <li>Go to <strong>Webhooks</strong> configuration in Meta.</li>
-                <li>Click <strong>Edit Callback URL</strong>. Paste the Webhook URL below.</li>
-                <li>Verify Token: Enter <code>localai</code>.</li>
-                <li>Subscribe to fields: <code>messages</code> (Messenger) or <code>messages</code> (WhatsApp).</li>
-              </ol>
+              <div className="space-y-3">
+                <div className="text-xs text-blue-800">
+                  <h5 className="font-bold underline mb-1">Part 1: Link Instagram</h5>
+                  <ol className="list-decimal list-inside space-y-1 ml-1">
+                    <li>Switch Instagram App to <strong>Professional Account</strong>.</li>
+                    <li>Connect Instagram to your Facebook Page in Page Settings.</li>
+                    <li>In Instagram App: Settings &gt; Messages &gt; Enable "Allow Access to Messages".</li>
+                  </ol>
+                </div>
+                <div className="text-xs text-blue-800 border-t border-blue-200 pt-2">
+                  <h5 className="font-bold underline mb-1">Part 2: Get IDs & Token (Avoid 'manage_pages')</h5>
+                  <ol className="list-decimal list-inside space-y-1 ml-1">
+                    <li>Go to <a href="https://developers.facebook.com/apps" target="_blank" className="underline font-bold">Meta Developers</a>. Create a Business App.</li>
+                    <li>Add <strong>Messenger</strong>. Generate Token for your Page.</li>
+                    <li><strong>Important:</strong> When generating token, select permissions: <code>pages_messaging</code>, <code>pages_read_engagement</code>. For Instagram, add <code>instagram_basic</code>, <code>instagram_manage_messages</code>.</li>
+                    <li>Do NOT select <code>manage_pages</code> (it is deprecated).</li>
+                  </ol>
+                </div>
+                <div className="text-xs text-blue-800 border-t border-blue-200 pt-2">
+                  <h5 className="font-bold underline mb-1">Part 3: Connect Webhook</h5>
+                  <ol className="list-decimal list-inside space-y-1 ml-1">
+                    <li>In Meta App &gt; Messenger &gt; Settings &gt; Webhooks: Click "Edit Callback URL".</li>
+                    <li>Paste the URL below. Verify Token: <code>localai</code>.</li>
+                    <li>Add Subscriptions: <code>messages</code> and <code>messaging_postbacks</code>.</li>
+                  </ol>
+                </div>
+                 <div className="text-xs text-blue-800 border-t border-blue-200 pt-2">
+                  <h5 className="font-bold underline mb-1">Part 4: "Insufficient Developer Role" Error?</h5>
+                  <ul className="list-disc list-inside space-y-1 ml-1">
+                    <li>If you see this error, your Meta App is likely in <strong>Development Mode</strong>.</li>
+                    <li>In Dev Mode, you can only message people listed as "Testers" in the Meta App (Roles &gt; Roles).</li>
+                    <li>To message real customers, switch the Meta App to <strong>Live Mode</strong> (Toggle at top of screen).</li>
+                  </ul>
+                </div>
+              </div>
             </div>
           )}
 
           <div className="p-6 space-y-4">
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Meta Page ID (or WhatsApp Business ID)</label>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Meta Page ID (Facebook)</label>
               <input type="text" className="w-full p-2.5 border border-slate-200 rounded-lg text-sm bg-white text-slate-900" placeholder="1000..." value={integration.metaPageId} onChange={e => setIntegration(prev => ({...prev, metaPageId: e.target.value}))} />
-              <p className="text-xs text-slate-500 mt-1">Found in Page Settings &gt; About or WhatsApp API Setup.</p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Instagram Business ID (Optional)</label>
+              <input type="text" className="w-full p-2.5 border border-slate-200 rounded-lg text-sm bg-white text-slate-900" placeholder="1784..." value={integration.metaInstagramId || ''} onChange={e => setIntegration(prev => ({...prev, metaInstagramId: e.target.value}))} />
+              <p className="text-xs text-slate-500 mt-1">Required for Instagram DMs. Find it using Graph API Explorer.</p>
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Meta Access Token</label>
               <input type="password" className="w-full p-2.5 border border-slate-200 rounded-lg text-sm bg-white text-slate-900" placeholder="EAA..." value={integration.metaAccessToken} onChange={e => setIntegration(prev => ({...prev, metaAccessToken: e.target.value}))} />
-              <p className="text-xs text-slate-500 mt-1">System User Token or Temporary Token from Developer Portal.</p>
+              <p className="text-xs text-slate-500 mt-1">Requires <code>pages_messaging</code> and <code>instagram_manage_messages</code>. Do NOT use <code>manage_pages</code>.</p>
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">WhatsApp Phone ID (Optional)</label>

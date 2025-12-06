@@ -1,8 +1,5 @@
 
 
-
-
-
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.7";
 
 declare const Deno: any;
@@ -77,7 +74,7 @@ Deno.serve(async (req: Request) => {
        try { result = JSON.parse(text); } catch { result = { text }; }
        if (!res.ok) throw new Error(`Twilio: ${result.message || result.detail}`);
     } 
-    else if (channel === 'facebook' || channel === 'instagram') {
+    else if (channel === 'facebook') {
        if (!integration.meta_page_id) throw new Error("Meta Page ID missing");
        const url = `https://graph.facebook.com/v18.0/${integration.meta_page_id}/messages?access_token=${integration.meta_access_token}`;
        const res = await fetch(url, {
@@ -86,7 +83,34 @@ Deno.serve(async (req: Request) => {
          body: JSON.stringify({ recipient: { id: to }, message: { text: body } })
        });
        result = await res.json();
-       if (result.error) throw new Error(`Meta: ${result.error.message}`);
+       if (result.error) {
+           let msg = result.error.message;
+           if (msg && msg.includes('Insufficient developer role')) {
+               msg += " (Hint: Your Meta App is in Development Mode. Add the recipient as a Tester or switch App to Live Mode.)";
+           }
+           throw new Error(`Meta: ${msg}`);
+       }
+    }
+    else if (channel === 'instagram') {
+       // For Instagram, we use the Instagram Business Account ID
+       const instaId = integration.meta_instagram_id || integration.meta_page_id; // Fallback to Page ID but likely needs specific ID
+       if (!instaId) throw new Error("Meta Instagram ID missing");
+       
+       // Note: Instagram usually requires sending to 'me/messages' or '{ig-user-id}/messages'
+       const url = `https://graph.facebook.com/v18.0/${instaId}/messages?access_token=${integration.meta_access_token}`;
+       const res = await fetch(url, {
+         method: 'POST',
+         headers: { 'Content-Type': 'application/json' },
+         body: JSON.stringify({ recipient: { id: to }, message: { text: body } })
+       });
+       result = await res.json();
+       if (result.error) {
+           let msg = result.error.message;
+           if (msg && msg.includes('Insufficient developer role')) {
+               msg += " (Hint: Your Meta App is in Development Mode. Add the recipient as a Tester or switch App to Live Mode.)";
+           }
+           throw new Error(`Instagram: ${msg}`);
+       }
     }
     else if (channel === 'whatsapp') {
        if (!integration.whatsapp_phone_id) throw new Error("WhatsApp Phone ID missing");
