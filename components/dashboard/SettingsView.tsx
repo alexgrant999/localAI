@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Zap, Save, Loader2, Link, Copy, Check, AlertTriangle, Globe, Key, Brain, Sparkles, MessageCircle, Facebook, Instagram, HelpCircle, ChevronDown, ChevronUp, Smartphone, Mic } from 'lucide-react';
 import { IntegrationSettings, User, AiSettings } from '../../types';
@@ -24,6 +23,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({
   const [copied, setCopied] = useState(false);
   const [showMetaGuide, setShowMetaGuide] = useState(false);
   const [isTestingMeta, setIsTestingMeta] = useState(false);
+  const [isTestingInsta, setIsTestingInsta] = useState(false);
   
   const webhookUrl = `${SUPABASE_URL}/functions/v1/incoming-sms`; // Twilio Webhook
   const voiceWebhookUrl = `${SUPABASE_URL}/functions/v1/incoming-voice`; // Twilio Voice Webhook
@@ -71,6 +71,45 @@ const SettingsView: React.FC<SettingsViewProps> = ({
       alert(`Error: ${e.message}`);
     } finally {
       setIsTestingMeta(false);
+    }
+  };
+
+  const handleTestInstagramWebhook = async () => {
+    if (!integration.metaInstagramId) {
+      alert("Please save an Instagram Business ID first.");
+      return;
+    }
+    setIsTestingInsta(true);
+    try {
+      const payload = {
+        object: "instagram",
+        entry: [{
+          id: integration.metaInstagramId,
+          messaging: [{
+            sender: { id: "987654321_INSTA_USER" },
+            recipient: { id: integration.metaInstagramId },
+            timestamp: Date.now(),
+            message: { text: "This is a simulated Instagram DM." }
+          }]
+        }]
+      };
+
+      const response = await fetch(metaWebhookUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      
+      const text = await response.text();
+      if (response.ok) {
+        alert("Success! Check your Inbox for a new Instagram conversation.");
+      } else {
+        alert(`Failed: ${text}`);
+      }
+    } catch (e: any) {
+      alert(`Error: ${e.message}`);
+    } finally {
+      setIsTestingInsta(false);
     }
   };
 
@@ -177,7 +216,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({
           <div className="p-6 border-b border-slate-100 flex items-center justify-between">
              <div className="flex items-center gap-3">
                <div className="p-2 bg-blue-100 text-blue-600 rounded-lg"><Facebook size={20} /></div>
-               <div><h3 className="font-bold text-slate-900">Omnichannel (Meta)</h3><p className="text-sm text-slate-500">Connect Facebook, Instagram & WhatsApp.</p></div>
+               <div><h3 className="font-bold text-slate-900">Meta Integrations</h3><p className="text-sm text-slate-500">Connect Facebook, Instagram & WhatsApp.</p></div>
              </div>
              <button onClick={() => setShowMetaGuide(!showMetaGuide)} className="text-slate-400 hover:text-slate-600">
                {showMetaGuide ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
@@ -189,20 +228,19 @@ const SettingsView: React.FC<SettingsViewProps> = ({
               <h4 className="font-bold text-blue-900 text-sm mb-2 flex items-center gap-2"><HelpCircle size={14}/> Setup Guide</h4>
               <div className="space-y-3">
                 <div className="text-xs text-blue-800">
-                  <h5 className="font-bold underline mb-1">Part 1: Link Instagram</h5>
+                  <h5 className="font-bold underline mb-1">Part 1: Link Instagram (Critical)</h5>
                   <ol className="list-decimal list-inside space-y-1 ml-1">
                     <li>Switch Instagram App to <strong>Professional Account</strong>.</li>
-                    <li>Connect Instagram to your Facebook Page in Page Settings.</li>
-                    <li>In Instagram App: Settings &gt; Messages &gt; Enable "Allow Access to Messages".</li>
+                    <li>Connect Instagram to your Facebook Page (in Facebook Page Settings &gt; Linked Accounts).</li>
+                    <li><strong>Crucial:</strong> In the Instagram Mobile App: Go to Settings &gt; Messages &gt; <strong>Enable "Allow Access to Messages"</strong>.</li>
                   </ol>
                 </div>
                 <div className="text-xs text-blue-800 border-t border-blue-200 pt-2">
-                  <h5 className="font-bold underline mb-1">Part 2: Get IDs & Token (Avoid 'manage_pages')</h5>
+                  <h5 className="font-bold underline mb-1">Part 2: Get IDs & Token</h5>
                   <ol className="list-decimal list-inside space-y-1 ml-1">
                     <li>Go to <a href="https://developers.facebook.com/apps" target="_blank" className="underline font-bold">Meta Developers</a>. Create a Business App.</li>
                     <li>Add <strong>Messenger</strong>. Generate Token for your Page.</li>
-                    <li><strong>Important:</strong> When generating token, select permissions: <code>pages_messaging</code>, <code>pages_read_engagement</code>. For Instagram, add <code>instagram_basic</code>, <code>instagram_manage_messages</code>.</li>
-                    <li>Do NOT select <code>manage_pages</code> (it is deprecated).</li>
+                    <li>Required Permissions: <code>pages_messaging</code>, <code>pages_read_engagement</code>, <code>instagram_basic</code>, <code>instagram_manage_messages</code>.</li>
                   </ol>
                 </div>
                 <div className="text-xs text-blue-800 border-t border-blue-200 pt-2">
@@ -210,40 +248,75 @@ const SettingsView: React.FC<SettingsViewProps> = ({
                   <ol className="list-decimal list-inside space-y-1 ml-1">
                     <li>In Meta App &gt; Messenger &gt; Settings &gt; Webhooks: Click "Edit Callback URL".</li>
                     <li>Paste the URL below. Verify Token: <code>localai</code>.</li>
-                    <li>Add Subscriptions: <code>messages</code> and <code>messaging_postbacks</code>.</li>
+                    <li>Add Subscriptions: <code>messages</code> and <code>instagram</code> (if available).</li>
                   </ol>
                 </div>
                  <div className="text-xs text-blue-800 border-t border-blue-200 pt-2">
-                  <h5 className="font-bold underline mb-1">Part 4: "Insufficient Developer Role" Error?</h5>
+                  <h5 className="font-bold underline mb-1">Part 4: "Insufficient Developer Role"?</h5>
                   <ul className="list-disc list-inside space-y-1 ml-1">
-                    <li>If you see this error, your Meta App is likely in <strong>Development Mode</strong>.</li>
-                    <li>In Dev Mode, you can only message people listed as "Testers" in the Meta App (Roles &gt; Roles).</li>
-                    <li>To message real customers, switch the Meta App to <strong>Live Mode</strong> (Toggle at top of screen).</li>
+                    <li>If testing fails, your Meta App is likely in <strong>Development Mode</strong>.</li>
+                    <li>In Dev Mode, you can only message "Testers" added in the Meta App (Roles).</li>
+                    <li>To message real customers, switch the Meta App to <strong>Live Mode</strong>.</li>
                   </ul>
                 </div>
               </div>
             </div>
           )}
 
-          <div className="p-6 space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Meta Page ID (Facebook)</label>
-              <input type="text" className="w-full p-2.5 border border-slate-200 rounded-lg text-sm bg-white text-slate-900" placeholder="1000..." value={integration.metaPageId} onChange={e => setIntegration(prev => ({...prev, metaPageId: e.target.value}))} />
+          <div className="p-6 space-y-6">
+            
+            {/* Facebook Section */}
+            <div className="p-4 bg-blue-50/50 rounded-xl border border-blue-100">
+                <h4 className="text-sm font-bold text-blue-900 flex items-center gap-2 mb-3"><Facebook size={16}/> Facebook Messenger</h4>
+                <div className="space-y-3">
+                    <div>
+                    <label className="block text-xs font-medium text-slate-700 mb-1">Meta Page ID</label>
+                    <input type="text" className="w-full p-2.5 border border-slate-200 rounded-lg text-sm bg-white text-slate-900" placeholder="1000..." value={integration.metaPageId} onChange={e => setIntegration(prev => ({...prev, metaPageId: e.target.value}))} />
+                    </div>
+                    <div>
+                    <label className="block text-xs font-medium text-slate-700 mb-1">Page Access Token</label>
+                    <input type="password" className="w-full p-2.5 border border-slate-200 rounded-lg text-sm bg-white text-slate-900" placeholder="EAA..." value={integration.metaAccessToken} onChange={e => setIntegration(prev => ({...prev, metaAccessToken: e.target.value}))} />
+                    </div>
+                </div>
+                <div className="mt-3 text-right">
+                     <button onClick={handleTestMetaWebhook} disabled={isTestingMeta} className="text-xs bg-white text-blue-700 border border-blue-200 px-3 py-1.5 rounded-lg font-bold hover:bg-blue-50 disabled:opacity-50">
+                        {isTestingMeta ? "Simulating..." : "Test Facebook Message"}
+                    </button>
+                </div>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Instagram Business ID (Optional)</label>
-              <input type="text" className="w-full p-2.5 border border-slate-200 rounded-lg text-sm bg-white text-slate-900" placeholder="1784..." value={integration.metaInstagramId || ''} onChange={e => setIntegration(prev => ({...prev, metaInstagramId: e.target.value}))} />
-              <p className="text-xs text-slate-500 mt-1">Required for Instagram DMs. Find it using Graph API Explorer.</p>
+
+            {/* Instagram Section */}
+            <div className="p-4 bg-pink-50/50 rounded-xl border border-pink-100">
+                <h4 className="text-sm font-bold text-pink-900 flex items-center gap-2 mb-3"><Instagram size={16}/> Instagram Business</h4>
+                <div className="space-y-3">
+                    <div>
+                    <label className="block text-xs font-medium text-slate-700 mb-1">Instagram Business ID (Graph API)</label>
+                    <input type="text" className="w-full p-2.5 border border-slate-200 rounded-lg text-sm bg-white text-slate-900" placeholder="1784..." value={integration.metaInstagramId || ''} onChange={e => setIntegration(prev => ({...prev, metaInstagramId: e.target.value}))} />
+                    </div>
+                    <div>
+                    <label className="block text-xs font-medium text-slate-700 mb-1">Instagram Access Token (Optional)</label>
+                    <input type="password" className="w-full p-2.5 border border-slate-200 rounded-lg text-sm bg-white text-slate-900" placeholder="Leave blank to use Page Token above" value={integration.metaInstagramAccessToken || ''} onChange={e => setIntegration(prev => ({...prev, metaInstagramAccessToken: e.target.value}))} />
+                    <p className="text-[10px] text-slate-500 mt-1">If your IG account requires a different token than your Facebook Page.</p>
+                    </div>
+                </div>
+                <div className="mt-3 text-right">
+                     <button onClick={handleTestInstagramWebhook} disabled={isTestingInsta} className="text-xs bg-white text-pink-700 border border-pink-200 px-3 py-1.5 rounded-lg font-bold hover:bg-pink-50 disabled:opacity-50">
+                        {isTestingInsta ? "Simulating..." : "Test Instagram Message"}
+                    </button>
+                </div>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Meta Access Token</label>
-              <input type="password" className="w-full p-2.5 border border-slate-200 rounded-lg text-sm bg-white text-slate-900" placeholder="EAA..." value={integration.metaAccessToken} onChange={e => setIntegration(prev => ({...prev, metaAccessToken: e.target.value}))} />
-              <p className="text-xs text-slate-500 mt-1">Requires <code>pages_messaging</code> and <code>instagram_manage_messages</code>. Do NOT use <code>manage_pages</code>.</p>
+
+            {/* WhatsApp Section */}
+            <div className="p-4 bg-green-50/50 rounded-xl border border-green-100">
+                <h4 className="text-sm font-bold text-green-900 flex items-center gap-2 mb-3"><MessageCircle size={16}/> WhatsApp Business</h4>
+                <div className="space-y-3">
+                    <div>
+                    <label className="block text-xs font-medium text-slate-700 mb-1">WhatsApp Phone ID</label>
+                    <input type="text" className="w-full p-2.5 border border-slate-200 rounded-lg text-sm bg-white text-slate-900" placeholder="1234..." value={integration.whatsappPhoneId} onChange={e => setIntegration(prev => ({...prev, whatsappPhoneId: e.target.value}))} />
+                    </div>
+                </div>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">WhatsApp Phone ID (Optional)</label>
-              <input type="text" className="w-full p-2.5 border border-slate-200 rounded-lg text-sm bg-white text-slate-900" placeholder="1234..." value={integration.whatsappPhoneId} onChange={e => setIntegration(prev => ({...prev, whatsappPhoneId: e.target.value}))} />
-            </div>
+
             <div className="mt-4 p-3 bg-slate-50 rounded-lg border border-slate-200">
                <span className="text-xs font-bold text-slate-700 block mb-1">Meta Webhook URL (Verify Token: 'localai')</span>
                <div className="flex gap-2">
@@ -251,11 +324,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({
                  <button onClick={() => handleCopy(metaWebhookUrl)} className="p-2 bg-white border border-slate-200 rounded hover:text-indigo-600"><Copy size={14}/></button>
                </div>
             </div>
-            <div className="mt-4 text-right">
-              <button onClick={handleTestMetaWebhook} disabled={isTestingMeta} className="text-xs bg-blue-50 text-blue-700 border border-blue-200 px-3 py-2 rounded-lg font-bold hover:bg-blue-100 disabled:opacity-50">
-                 {isTestingMeta ? "Simulating..." : "Test Facebook Message"}
-              </button>
-            </div>
+            
           </div>
         </div>
 

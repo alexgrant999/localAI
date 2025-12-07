@@ -1,10 +1,3 @@
-
-
-
-
-
-
-
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { supabase } from '../supabaseClient';
 import { Conversation, Message, Campaign, IntegrationSettings, AiSettings, User } from '../types';
@@ -30,8 +23,9 @@ export const useDashboardData = (user: User) => {
     authToken: '',
     phoneNumber: '',
     metaPageId: '',
-    metaInstagramId: '',
     metaAccessToken: '',
+    metaInstagramId: '',
+    metaInstagramAccessToken: '',
     whatsappPhoneId: '',
     notificationPhone: '',
     voiceEnabled: true,
@@ -98,8 +92,9 @@ export const useDashboardData = (user: User) => {
           authToken: ints.auth_token || '',
           phoneNumber: ints.phone_number || '',
           metaPageId: ints.meta_page_id || '',
-          metaInstagramId: ints.meta_instagram_id || '',
           metaAccessToken: ints.meta_access_token || '',
+          metaInstagramId: ints.meta_instagram_id || '',
+          metaInstagramAccessToken: ints.meta_instagram_access_token || '',
           whatsappPhoneId: ints.whatsapp_phone_id || '',
           notificationPhone: ints.notification_phone || '',
           voiceEnabled: ints.voice_enabled ?? true,

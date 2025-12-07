@@ -10,11 +10,10 @@ import {
   ArrowLeft,
   AlertCircle,
   CheckCircle2,
-  RefreshCw,
-  HelpCircle
+  RefreshCw
 } from 'lucide-react';
 import { ViewState } from '../types';
-import { supabase, isSupabaseConfigured } from '../supabaseClient';
+import { supabase, isSupabaseConfigured, SITE_URL } from '../supabaseClient';
 
 interface AuthPageProps {
   view: 'login' | 'register';
@@ -36,6 +35,11 @@ const AuthPage: React.FC<AuthPageProps> = ({ view, onNavigate, initialError }) =
     password: ''
   });
 
+  // Determine the redirect URL: Use config SITE_URL if set, otherwise current browser origin
+  const getRedirectUrl = () => {
+    return SITE_URL ? SITE_URL : window.location.origin;
+  };
+
   useEffect(() => {
     if (initialError) setError(initialError);
   }, [initialError]);
@@ -49,6 +53,13 @@ const AuthPage: React.FC<AuthPageProps> = ({ view, onNavigate, initialError }) =
     // Safety check for demo environment
     if (!isSupabaseConfigured()) {
       setError("Supabase is not configured in supabaseClient.ts. Please add your URL and Key.");
+      setIsLoading(false);
+      return;
+    }
+
+    // Client-side validation
+    if (formData.password.length < 6) {
+      setError("Password must be at least 6 characters long.");
       setIsLoading(false);
       return;
     }
@@ -68,6 +79,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ view, onNavigate, initialError }) =
           email: emailCleaned,
           password: formData.password,
           options: {
+            emailRedirectTo: getRedirectUrl(), // Ensure user returns to the correct app URL after confirming
             data: {
               name: formData.name,
               companyName: formData.companyName,
@@ -89,13 +101,22 @@ const AuthPage: React.FC<AuthPageProps> = ({ view, onNavigate, initialError }) =
       }
     } catch (err: any) {
       console.error(err);
-      if (err.message.includes("Email not confirmed")) {
-        setError("Email not confirmed. Please check your inbox or request a new link.");
-      } else if (err.message.includes("Invalid login credentials")) {
+      const msg = err.message || err.error_description || "An error occurred";
+      
+      if (msg.includes("Email not confirmed")) {
+        // If email isn't confirmed, show the confirmation screen so they can resend
+        setSuccessMessage("Your email exists but is not confirmed.");
+        setShowConfirmation(true);
+      } else if (msg.includes("Invalid login credentials")) {
         setError("Incorrect email or password. Please try again or reset your password.");
+      } else if (msg.includes("User already registered")) {
+        setError("This email is already registered. Please log in.");
+      } else if (msg.includes("Password should be at least")) {
+        setError("Password is too short. It must be at least 6 characters.");
       } else {
-        setError(err.message || "An error occurred during authentication.");
+        setError(msg);
       }
+    } finally {
       setIsLoading(false);
     }
   };
@@ -108,6 +129,9 @@ const AuthPage: React.FC<AuthPageProps> = ({ view, onNavigate, initialError }) =
       const { error } = await supabase.auth.resend({
         type: 'signup',
         email: formData.email.trim(),
+        options: {
+          emailRedirectTo: getRedirectUrl()
+        }
       });
       if (error) throw error;
       setSuccessMessage("Confirmation email resent! Please check your inbox.");
@@ -129,7 +153,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ view, onNavigate, initialError }) =
     
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(formData.email.trim(), {
-        redirectTo: window.location.origin + '#reset-password',
+        redirectTo: getRedirectUrl() + '#reset-password',
       });
       if (error) throw error;
       setSuccessMessage("Password reset email sent! Please check your inbox.");
@@ -146,7 +170,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ view, onNavigate, initialError }) =
   };
 
   // ----------------------------------------------------------------------
-  // VIEW: Email Confirmation Sent
+  // VIEW: Email Confirmation Sent / Check Email
   // ----------------------------------------------------------------------
   if (showConfirmation) {
     return (
@@ -246,15 +270,6 @@ const AuthPage: React.FC<AuthPageProps> = ({ view, onNavigate, initialError }) =
               <AlertCircle className="text-rose-600 shrink-0 mt-0.5" size={18} />
               <div className="flex-1">
                  <p className="text-sm text-rose-700 font-medium">{error}</p>
-                 {error.includes("Email not confirmed") && (
-                   <button 
-                    onClick={handleResendConfirmation}
-                    disabled={resendLoading}
-                    className="text-xs text-rose-800 underline mt-1 hover:text-rose-900 font-bold"
-                   >
-                     {resendLoading ? "Sending..." : "Resend confirmation email"}
-                   </button>
-                 )}
               </div>
             </div>
           )}
@@ -270,11 +285,11 @@ const AuthPage: React.FC<AuthPageProps> = ({ view, onNavigate, initialError }) =
             {view === 'register' && (
               <>
                 <div>
-                  <label htmlFor="name" className="block text-sm font-medium text-slate-700">
+                  <label htmlFor="name" className="block text-sm font-medium text-slate-700 mb-1">
                     Full Name
                   </label>
-                  <div className="mt-1 relative rounded-md shadow-sm">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <div className="relative rounded-md shadow-sm">
+                    <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
                       <User className="h-5 w-5 text-slate-400" />
                     </div>
                     <input
@@ -284,18 +299,18 @@ const AuthPage: React.FC<AuthPageProps> = ({ view, onNavigate, initialError }) =
                       required
                       value={formData.name}
                       onChange={handleChange}
-                      className="block w-full pl-10 pr-3 py-2 border border-slate-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm text-slate-900"
+                      className="block w-full rounded-lg border border-slate-300 pl-10 py-2 text-slate-900 placeholder-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 sm:text-sm bg-white"
                       placeholder="Jane Doe"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label htmlFor="companyName" className="block text-sm font-medium text-slate-700">
+                  <label htmlFor="companyName" className="block text-sm font-medium text-slate-700 mb-1">
                     Business Name
                   </label>
-                  <div className="mt-1 relative rounded-md shadow-sm">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <div className="relative rounded-md shadow-sm">
+                    <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
                       <Building2 className="h-5 w-5 text-slate-400" />
                     </div>
                     <input
@@ -305,7 +320,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ view, onNavigate, initialError }) =
                       required
                       value={formData.companyName}
                       onChange={handleChange}
-                      className="block w-full pl-10 pr-3 py-2 border border-slate-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm text-slate-900"
+                      className="block w-full rounded-lg border border-slate-300 pl-10 py-2 text-slate-900 placeholder-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 sm:text-sm bg-white"
                       placeholder="Jane's Yoga Studio"
                     />
                   </div>
@@ -314,11 +329,11 @@ const AuthPage: React.FC<AuthPageProps> = ({ view, onNavigate, initialError }) =
             )}
 
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-slate-700">
+              <label htmlFor="email" className="block text-sm font-medium text-slate-700 mb-1">
                 Email address
               </label>
-              <div className="mt-1 relative rounded-md shadow-sm">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <div className="relative rounded-md shadow-sm">
+                <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
                   <Mail className="h-5 w-5 text-slate-400" />
                 </div>
                 <input
@@ -329,7 +344,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ view, onNavigate, initialError }) =
                   required
                   value={formData.email}
                   onChange={handleChange}
-                  className="block w-full pl-10 pr-3 py-2 border border-slate-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm text-white-900"
+                  className="block w-full rounded-lg border border-slate-300 pl-10 py-2 text-slate-900 placeholder-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 sm:text-sm bg-white"
                   placeholder="you@example.com"
                 />
               </div>
@@ -352,7 +367,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ view, onNavigate, initialError }) =
                   )}
                 </div>
               <div className="relative rounded-md shadow-sm">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
                   <Lock className="h-5 w-5 text-slate-400" />
                 </div>
                 <input
@@ -363,8 +378,8 @@ const AuthPage: React.FC<AuthPageProps> = ({ view, onNavigate, initialError }) =
                   required
                   value={formData.password}
                   onChange={handleChange}
-                  className="block w-full pl-10 pr-3 py-2 border border-slate-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm text-slate-900"
-                  placeholder="••••••••"
+                  className="block w-full rounded-lg border border-slate-300 pl-10 py-2 text-slate-900 placeholder-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 sm:text-sm bg-white"
+                  placeholder="Min 6 characters"
                 />
               </div>
             </div>
@@ -392,7 +407,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ view, onNavigate, initialError }) =
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full flex justify-center py-2.5 px-4 border border-transparent rounded-lg shadow-sm text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-70 disabled:cursor-not-allowed transition-all"
+                className="flex w-full justify-center rounded-lg border border-transparent bg-indigo-600 py-2.5 px-4 text-sm font-bold text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-70 disabled:cursor-not-allowed transition-all"
               >
                 {isLoading ? (
                   <Loader2 className="animate-spin h-5 w-5" />

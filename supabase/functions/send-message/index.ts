@@ -93,11 +93,15 @@ Deno.serve(async (req: Request) => {
     }
     else if (channel === 'instagram') {
        // For Instagram, we use the Instagram Business Account ID
-       const instaId = integration.meta_instagram_id || integration.meta_page_id; // Fallback to Page ID but likely needs specific ID
-       if (!instaId) throw new Error("Meta Instagram ID missing");
+       const instaId = integration.meta_instagram_id;
+       if (!instaId) throw new Error("Meta Instagram ID missing. Please save it in Settings.");
        
+       // Priority: specific IG token > general Meta token
+       const token = integration.meta_instagram_access_token || integration.meta_access_token;
+       if (!token) throw new Error("Missing Access Token for Instagram.");
+
        // Note: Instagram usually requires sending to 'me/messages' or '{ig-user-id}/messages'
-       const url = `https://graph.facebook.com/v18.0/${instaId}/messages?access_token=${integration.meta_access_token}`;
+       const url = `https://graph.facebook.com/v18.0/${instaId}/messages?access_token=${token}`;
        const res = await fetch(url, {
          method: 'POST',
          headers: { 'Content-Type': 'application/json' },

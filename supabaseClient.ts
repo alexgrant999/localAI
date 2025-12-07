@@ -1,3 +1,4 @@
+
 import { createClient } from '@supabase/supabase-js';
 
 // ------------------------------------------------------------------
@@ -5,6 +6,10 @@ import { createClient } from '@supabase/supabase-js';
 // ------------------------------------------------------------------
 export const SUPABASE_URL = 'https://oixsqvhknpqhjwojmupe.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9peHNxdmhrbnBxaGp3b2ptdXBlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ1MTI5NTMsImV4cCI6MjA4MDA4ODk1M30.lR6LNsuw-NG5duPi53BYuVH_TqFUyfuPtXSLUH4i8vc';
+
+// Set this to your production URL (e.g. 'https://myapp.com') to ensure emails link correctly.
+// If left empty, it will default to window.location.origin (which is localhost in dev).
+export const SITE_URL = ''; 
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   auth: {

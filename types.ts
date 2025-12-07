@@ -67,8 +67,11 @@ export interface IntegrationSettings {
   
   // Meta / Omnichannel
   metaPageId: string;
-  metaInstagramId?: string; // New field for Instagram Business ID
-  metaAccessToken: string;
+  metaAccessToken: string; // Facebook Page Token
+  
+  metaInstagramId?: string; // Instagram Business ID
+  metaInstagramAccessToken?: string; // Specific IG Token
+
   whatsappPhoneId: string;
   
   // Notification

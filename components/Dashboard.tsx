@@ -307,8 +307,9 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, user }) => {
         auth_token: integration.authToken,
         phone_number: cleanPhone,
         meta_page_id: integration.metaPageId,
-        meta_instagram_id: integration.metaInstagramId, // New field
+        meta_instagram_id: integration.metaInstagramId, 
         meta_access_token: integration.metaAccessToken,
+        meta_instagram_access_token: integration.metaInstagramAccessToken, // New field
         whatsapp_phone_id: integration.whatsappPhoneId,
         website_url: aiSettings.websiteUrl,
         business_goal: aiSettings.businessGoal,
@@ -333,6 +334,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, user }) => {
         id: data.id, 
         phoneNumber: cleanPhone,
         metaInstagramId: data.meta_instagram_id,
+        metaInstagramAccessToken: data.meta_instagram_access_token,
         autoPilotEnabled: data.auto_pilot_enabled ?? false
       }));
       addToast('success', 'Settings saved!');
@@ -448,6 +450,9 @@ begin
   end if;
   if not exists (select 1 from information_schema.columns where table_name = 'integrations' and column_name = 'meta_access_token') then
     alter table public.integrations add column meta_access_token text;
+  end if;
+  if not exists (select 1 from information_schema.columns where table_name = 'integrations' and column_name = 'meta_instagram_access_token') then
+    alter table public.integrations add column meta_instagram_access_token text;
   end if;
   if not exists (select 1 from information_schema.columns where table_name = 'integrations' and column_name = 'whatsapp_phone_id') then
     alter table public.integrations add column whatsapp_phone_id text;
